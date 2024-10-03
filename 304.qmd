@@ -1,0 +1,112 @@
+
+---
+title: "Estimation of Respondents Using Ratio Estimators Approach"
+author: "Your Name"
+date: "2024-10-03"
+format: 
+  pdf: 
+    documentclass: article
+    toc: true
+    toc-depth: 2
+---
+
+# Introduction
+
+This report uses the ratio estimators approach to estimate the total number of respondents in each state based on the number of respondents with doctoral degrees. We compare these estimates with the actual number of respondents and provide insights into why the estimates may differ from the actual values.
+
+# Instructions on How to Obtain the Data
+
+The dataset used for this exercise is located in `/Users/xuyihang/Downloads/usa_00001.csv`. It contains information about individuals across various states, including their educational attainment. To load the dataset into R, we used the following code:
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(readr)
+
+# Load the dataset from the given path
+file_path <- "/Users/xuyihang/Downloads/usa_00001.csv"
+df <- read_csv(file_path)
+```
+
+Ensure that the dataset has columns `STATEICP` for state identification and `EDUC` for educational attainment. The values for doctoral degrees should be filtered from the `EDUC` column.
+
+# Counting Respondents with Doctoral Degrees by State
+
+Using the codebook and the dataset, we can count how many respondents in each state had a doctoral degree as their highest educational attainment. Below is the code that creates a tibble with this information:
+
+```{r}
+# Create a tibble with the number of respondents in each state who have a doctoral degree
+doctoral_by_state <- df %>%
+  filter(EDUCD == 116) %>%  group_by(STATEICP) %>%
+  summarise(doctoral_count = n())
+
+# Display the tibble
+doctoral_by_state
+head(doctoral_by_state)
+```
+
+This tibble shows the number of respondents with doctoral degrees in each state.
+
+# Overview of the Ratio Estimators Approach
+
+The ratio estimators approach, based on Laplace's method, helps estimate the total number of respondents in a population by using a known ratio from one part of the data. In this case, we use the ratio of the total number of respondents to the number of respondents with doctoral degrees in California. This ratio is then applied to estimate the total number of respondents in other states.
+
+We calculate the ratio using the formula:
+
+$$
+	ext{Ratio} = rac{	ext{Total respondents in California}}{	ext{Respondents with Doctoral degrees in California}}
+$$
+
+This ratio is then multiplied by the number of respondents with doctoral degrees in each state to estimate the total respondents for that state.
+
+# Estimation and Actual Numbers
+
+Below is the code used to estimate the total number of respondents in each state and compare it with the actual number of respondents:
+
+```{r}
+# Now, let's calculate the ratio estimator for California
+california_total <- 391171  # Given total respondents in California
+california_doctoral <- doctoral_by_state %>%
+  filter(STATEICP == "California") %>%
+  pull(doctoral_count)
+
+# Compute the ratio of doctoral degrees in California
+california_ratio <- california_total / california_doctoral
+
+# Apply this ratio to estimate the total number of respondents in each state
+estimated_total_by_state <- doctoral_by_state %>%
+  mutate(estimated_total = doctoral_count * california_ratio)
+
+# Compare the estimated number of respondents with the actual numbers
+comparison <- df %>%
+  group_by(STATEICP) %>%
+  summarise(actual_total = n()) %>%
+  left_join(estimated_total_by_state, by = "STATEICP") %>%
+  mutate(difference = actual_total - estimated_total)
+
+# View the comparison
+print(comparison)
+```
+
+The table below provides the estimated and actual number of respondents in each state:
+
+```{r}
+# Display the comparison table
+comparison
+```
+
+# Discussion
+
+The ratio estimators approach assumes that the ratio of doctoral degrees to the total population remains relatively stable across states. However, differences between the estimated and actual numbers can arise due to various reasons:
+
+1. **Variability in Educational Attainment**: Different states may have different proportions of individuals with doctoral degrees compared to California. For example, states with major research universities might have disproportionately higher numbers of doctoral degree holders, while others may have lower proportions.
+   
+2. **Population Structure**: The age, socioeconomic, and occupational structure of each state’s population can influence educational attainment. States with younger populations or economies focused on industries that do not require advanced degrees may have lower numbers of individuals with doctoral degrees.
+
+3. **Sampling and Data Limitations**: The dataset might have some sampling or reporting limitations, which can affect the accuracy of our estimates.
+
+These differences highlight the limitations of applying a fixed ratio from one state to others, especially when the demographic and educational characteristics differ.
+
+# Conclusion
+
+The ratio estimators approach provided a useful method for estimating the total number of respondents in each state. However, the comparison with actual numbers revealed notable differences, suggesting that further refinement is needed to account for state-specific characteristics. Future work could involve using more localized ratios or additional variables to improve the accuracy of estimates.
